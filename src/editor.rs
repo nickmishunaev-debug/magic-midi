@@ -5,6 +5,7 @@ use nih_plug_egui::{create_egui_editor, egui};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+use crate::mode::Mode;
 use crate::mood::Mood;
 use crate::params::MidiGenParams;
 use crate::theory::{Key, ScaleKind};
@@ -44,7 +45,21 @@ pub fn create(params: Arc<MidiGenParams>, regen: Arc<AtomicBool>) -> Option<Box<
         move |egui_ctx, setter, _state| {
             egui::CentralPanel::default().show(egui_ctx, |ui| {
                 ui.heading("MIDI Gen");
-                ui.add_space(8.0);
+                ui.add_space(6.0);
+
+                // Mode selector: Melody or Chords
+                let mode = params.mode.value();
+                ui.horizontal(|ui| {
+                    for &m in &Mode::ALL {
+                        let text = egui::RichText::new(m.label()).size(17.0);
+                        if ui.selectable_label(m == mode, text).clicked() {
+                            setter.begin_set_parameter(&params.mode);
+                            setter.set_parameter(&params.mode, m);
+                            setter.end_set_parameter(&params.mode);
+                        }
+                    }
+                });
+                ui.add_space(10.0);
 
                 enum_combo(ui, setter, "Key", &params.key, &Key::ALL, Key::label);
                 enum_combo(ui, setter, "Scale", &params.scale, &ScaleKind::ALL, ScaleKind::label);
@@ -61,7 +76,11 @@ pub fn create(params: Arc<MidiGenParams>, regen: Arc<AtomicBool>) -> Option<Box<
                         }
                     }
                 });
-                ui.small(cur.tagline());
+                let tagline = match mode {
+                    Mode::Melody => cur.tagline(),
+                    Mode::Chords => cur.chord_tagline(),
+                };
+                ui.small(tagline);
                 ui.add_space(14.0);
 
                 if ui

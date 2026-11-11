@@ -145,6 +145,15 @@ impl ScaleKind {
         }
     }
 
+    /// The seven-note scale used to build chords. Five-note scales have no natural stacks of
+    /// thirds, so they borrow their parent scale (minor pentatonic -> natural minor).
+    pub fn chord_scale(self) -> ScaleKind {
+        match self {
+            ScaleKind::MinorPentatonic => ScaleKind::Minor,
+            other => other,
+        }
+    }
+
     /// Converts a scale position to a MIDI note.
     /// `pos` 0 = tonic, 1 = next scale degree, `len` = the tonic one octave up.
     pub fn midi(self, tonic: i32, pos: i32) -> i32 {

@@ -4,6 +4,8 @@
 
 use nih_plug::prelude::Enum;
 
+use crate::chords::ChordRhythm;
+
 #[derive(Enum, Debug, Clone, Copy, PartialEq)]
 pub enum Mood {
     #[id = "dreamy"]
@@ -45,6 +47,34 @@ pub struct MoodSettings {
     pub leapiness: f32,
     /// Repeat the hook exactly (riff-style)
     pub repeat: bool,
+}
+
+/// What a mood means in Chords mode.
+#[derive(Clone, Copy)]
+pub struct ChordSettings {
+    /// Bars each chord lasts (the loop is always four chords long)
+    pub bars_per_chord: u32,
+    /// 0 = mostly triads/7ths, 1 = 7ths and some 9ths, 2 = mostly 9ths
+    pub richness: u8,
+    pub rhythm: ChordRhythm,
+    /// Fraction of each hit's length that is held
+    pub gate: f64,
+    pub velocity: i32,
+    /// Register shift in octaves
+    pub octave: i32,
+    /// Delay in beats between chord notes (a gentle roll or strum), 0 = all at once
+    pub strum: f32,
+    /// 0..1, how likely the last bar is to break the pattern or the progression to turn around
+    pub variation: f32,
+    /// Use a two-chord vamp (A-B-A-B) instead of a four-chord progression
+    pub vamp: bool,
+}
+
+impl ChordSettings {
+    /// The loop is four chords long.
+    pub fn loop_bars(&self) -> u32 {
+        4 * self.bars_per_chord
+    }
 }
 
 impl Mood {
@@ -140,6 +170,88 @@ impl Mood {
                 up_bias: -0.1,
                 leapiness: 0.6,
                 repeat: false,
+            },
+        }
+    }
+
+    pub fn chord_tagline(self) -> &'static str {
+        match self {
+            Mood::Dreamy => "Lush 9th chords that sustain and drift",
+            Mood::Uplifting => "Bright off-beat stabs, like classic house piano",
+            Mood::Dark => "Sparse, moody 7th chord hits",
+            Mood::Groovy => "Syncopated deep house stabs",
+            Mood::Hypnotic => "A two-chord vamp that rolls on repeat",
+            Mood::Emotional => "Slow, wide 9th chords with space between the hits",
+        }
+    }
+
+    pub fn chord_settings(self) -> ChordSettings {
+        match self {
+            Mood::Dreamy => ChordSettings {
+                bars_per_chord: 2,
+                richness: 2,
+                rhythm: ChordRhythm::Pad,
+                gate: 0.98,
+                velocity: 78,
+                octave: 0,
+                strum: 0.03,
+                variation: 0.3,
+                vamp: false,
+            },
+            Mood::Uplifting => ChordSettings {
+                bars_per_chord: 1,
+                richness: 1,
+                rhythm: ChordRhythm::Offbeat,
+                gate: 0.8,
+                velocity: 100,
+                octave: 0,
+                strum: 0.0,
+                variation: 0.5,
+                vamp: false,
+            },
+            Mood::Dark => ChordSettings {
+                bars_per_chord: 1,
+                richness: 1,
+                rhythm: ChordRhythm::Sparse,
+                gate: 0.9,
+                velocity: 92,
+                octave: 0,
+                strum: 0.0,
+                variation: 0.4,
+                vamp: false,
+            },
+            Mood::Groovy => ChordSettings {
+                bars_per_chord: 1,
+                richness: 1,
+                rhythm: ChordRhythm::Syncopated,
+                gate: 0.55,
+                velocity: 104,
+                octave: 0,
+                strum: 0.0,
+                variation: 0.6,
+                vamp: false,
+            },
+            Mood::Hypnotic => ChordSettings {
+                bars_per_chord: 1,
+                richness: 1,
+                rhythm: ChordRhythm::Syncopated,
+                gate: 0.6,
+                velocity: 92,
+                octave: 0,
+                strum: 0.0,
+                variation: 0.1,
+                vamp: true,
+            },
+            Mood::Emotional => ChordSettings {
+                bars_per_chord: 2,
+                richness: 2,
+                rhythm: ChordRhythm::Sparse,
+                gate: 0.97,
+                velocity: 82,
+                octave: 0,
+                strum: 0.025,
+                variation: 0.3,
+                vamp: false,
             },
         }
     }

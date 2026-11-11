@@ -1,37 +1,38 @@
 # MIDI Gen
 
-A small VST3 plugin, written in Rust, that generates melodies as MIDI. Pick a key, a scale, and a mood, and it plays a melody you can route to any instrument and record into a clip as starter material.
+A small VST3 plugin, written in Rust, that generates melodies or chord progressions as MIDI. Pick Melody or Chords, then a key, a scale, and a mood, and it plays a loop you can route to any instrument and record into a clip as starter material.
 
 Built with [nih-plug](https://github.com/robbert-vdh/nih-plug) and its egui editor.
 
 ## What it does
 
-- Generates a melody in the key and scale you choose.
-- Lets you pick the character of the melody by **mood** instead of technical settings.
-- Plays one melody on a loop until you press **Regenerate**, so you can record it, tweak it, or roll a new one.
+- Generates either a **melody** or a **chord progression** in the key and scale you choose.
+- Lets you pick the character by **mood** instead of technical settings.
+- Plays one loop until you press **Regenerate**, so you can record it, tweak it, or roll a new one.
 - Outputs plain MIDI. It makes no sound itself; route it to a synth.
 
 ## Controls
 
 | Control | What it does |
 |---|---|
-| **Key** | Root note of the melody (C to B). Changing it transposes the current melody. |
-| **Scale** | Major, Minor, Dorian, Phrygian, Mixolydian, Harmonic Minor, or Minor Pentatonic. Changing it generates a new melody. |
-| **Mood** | The character of the melody (see below). Changing it generates a new melody. |
-| **Regenerate** | Throws away the current melody and generates a new one. |
+| **Melody / Chords** | What kind of MIDI to generate. Switching generates a new loop. |
+| **Key** | Root note (C to B). Changing it transposes the current loop. |
+| **Scale** | Major, Minor, Dorian, Phrygian, Mixolydian, Harmonic Minor, or Minor Pentatonic. Changing it generates a new loop. |
+| **Mood** | The character of the result (see below). Changing it generates a new loop. |
+| **Regenerate** | Throws away the current loop and generates a new one. |
 
 ### Moods
 
-| Mood | Character |
-|---|---|
-| Dreamy | Sparse and floating, with long soft notes |
-| Uplifting | Bright and rising, with bigger melodic jumps |
-| Dark | Low, tense, and sparse |
-| Groovy | Busy, syncopated, and bouncy (default) |
-| Hypnotic | A short riff that locks in and repeats |
-| Emotional | Slow, falling lines with long notes |
+| Mood | Melody | Chords |
+|---|---|---|
+| Dreamy | Sparse and floating, with long soft notes | Lush 9th chords that sustain and drift |
+| Uplifting | Bright and rising, with bigger melodic jumps | Bright off-beat stabs, like classic house piano |
+| Dark | Low, tense, and sparse | Sparse, moody 7th chord hits |
+| Groovy | Busy, syncopated, and bouncy (default) | Syncopated deep house stabs |
+| Hypnotic | A short riff that locks in and repeats | A two-chord vamp that rolls on repeat |
+| Emotional | Slow, falling lines with long notes | Slow, wide 9th chords with space between the hits |
 
-Each mood sets the technical details behind the scenes: how busy the rhythm is, note length, loudness, register, how often the melody leaps, whether it leans up or down, melody length (2 or 4 bars), and whether the hook repeats exactly.
+Each mood sets the technical details behind the scenes: how busy the rhythm is, note length, loudness, register, and so on, separately for each mode.
 
 ## How the melodies are made
 
@@ -43,7 +44,16 @@ Melodies are random, but constrained by simple composition rules, so they sound 
 4. **Call and response.** The hook ends on an unresolved degree (a "question"). Later bars reuse the hook as a transposed sequence or an exact return, and the final bar answers it by landing on the tonic and holding it.
 5. **Playback.** The finished melody is stored as a fixed list of notes and looped, so it doesn't change while you record.
 
-A random number generator seeded from the system clock provides the variety. Each plugin instance starts with a different melody, and each press of Regenerate draws a new one.
+A random number generator seeded from the system clock provides the variety. Each plugin instance starts with a different result, and each press of Regenerate draws a new one.
+
+## How the chords are made
+
+Chords mode builds a four-chord loop (4 bars, or 8 for the slower moods) from common deep-house habits, and randomizes each layer so no two results are alike.
+
+1. **Progression.** Picked from a library of common loops (i-VI-III-VII, i-iv-VII-III, i-VII-VI-VII, and in major I-vi-IV-V, ii-V-I-vi, and others), plus extras for Dorian, Phrygian, Mixolydian, and Harmonic Minor. The Hypnotic mood uses two-chord vamps (i-iv-i-iv). Sometimes the last chord is swapped for a turnaround (v or VII) that pulls back to the start. Progressions containing a diminished or augmented chord in the chosen scale are skipped.
+2. **Chord colour.** Each chord is built by stacking thirds from the scale, so every mode gets its own natural chord qualities. Chords are triads, 7ths, or 9ths depending on the mood. The 5th is often dropped (root, 3rd, 7th, 9th is a very common deep-house voicing), and now and then the 3rd is replaced by a suspended 4th. Minor-major 7ths are avoided.
+3. **Voicing and voice leading.** Every chord is placed in the same register, and the inversion that moves least from the previous chord is chosen, with randomness among near-ties. This gives the smooth, connected movement typical of piano and organ chords.
+4. **Rhythm.** A stab pattern is chosen per result: sustained pads, off-beat house stabs, syncopated piano, or sparse hits. It repeats every bar, and the last bar sometimes switches to a different pattern as a turnaround. The slower moods roll the notes of each chord slightly (a gentle strum).
 
 ## Requirements
 
@@ -115,30 +125,35 @@ Live's handling of VST3 MIDI output is limited. If MIDI Gen isn't listed as a so
     ├── editor.rs       # the egui window
     ├── engine.rs       # playback: transport position -> timed MIDI events
     ├── melody.rs       # melody generation: rhythms, hook, call and response
-    ├── mood.rs         # mood presets and the technical settings behind them
+    ├── chords.rs       # chord generation: progressions, voicing, stab rhythms
+    ├── note.rs         # the note type shared by both generators
+    ├── mode.rs         # Melody / Chords selector
+    ├── mood.rs         # mood presets and the technical settings behind them (both modes)
     ├── theory.rs       # keys, scales, scale position -> MIDI note
     └── rng.rs          # tiny random number generator
 ```
 
 Where to make changes:
 
-- **New mood:** `mood.rs` only (add a variant, list it in `ALL`, fill in its label, tagline, and settings).
+- **New mood:** `mood.rs` only (add a variant, list it in `ALL`, fill in its labels, taglines, and settings for both modes).
+- **New chord progressions or rhythms:** `chords.rs` (add entries to the progression or rhythm lists).
 - **New scale:** `theory.rs` only (add a variant and its intervals, stable degrees, and open degrees).
 - **New rhythms or melody rules:** `melody.rs`.
 - **New control in the window:** add the parameter in `params.rs`, draw it in `editor.rs`, and pass its value into `BlockInput` in `lib.rs`.
-- **New output behavior (for example chords mode):** `engine.rs` plus a new generator module next to `melody.rs`. The engine has no nih-plug dependency, so it's easy to extend and reason about.
+- **New generator (for example a bassline):** add a variant in `mode.rs`, write a generator module that produces `Note`s (see `chords.rs`), and add a branch in `Engine::regenerate`. The engine has no nih-plug dependency, so it's easy to extend and reason about.
 
 ## Limitations
 
 - Assumes 4/4 time.
-- Melody only. There is no chord mode yet.
-- The melody isn't aware of the chords you play underneath it, so passing notes can clash.
+- Melody and chords are generated separately. A melody isn't aware of the chords you play underneath it, so passing notes can clash.
+- Chords have no bass note. Pair them with your own bassline, or add a bass mode.
 - Only 11 rhythm templates, so patterns repeat across melodies.
-- The melody is not saved with the project. Record it to a clip to keep it.
+- The loop is not saved with the project. Record it to a clip to keep it.
 
 ## Ideas for next steps
 
-- Chords mode that reuses the same phrase structure, driven by a chord progression.
+- Make the melody follow the generated chords (chord-aware melody).
+- A bassline mode that follows the chord roots.
 - Generate several candidate melodies internally and keep the best-scoring one.
 - Follow the host's time signature.
 - More rhythm templates and more moods.

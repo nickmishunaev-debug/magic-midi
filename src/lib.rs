@@ -2,18 +2,24 @@
 //!
 //! Module map:
 //!   theory.rs  keys and scales
-//!   mood.rs    mood presets (all the technical melody settings)
+//!   mode.rs    Melody / Chords selector
+//!   mood.rs    mood presets (all the technical settings, for both modes)
 //!   rng.rs     tiny random number generator
+//!   note.rs    the note type shared by the generators
 //!   melody.rs  melody generation (rhythm, hook, call and response)
+//!   chords.rs  chord generation (progressions, voicing, stab rhythms)
 //!   engine.rs  playback: transport position -> timed MIDI events
 //!   params.rs  host-visible parameters
 //!   editor.rs  the egui window
 //!   lib.rs     this file: glue between nih-plug and the engine
 
+mod chords;
 mod editor;
 mod engine;
 mod melody;
+mod mode;
 mod mood;
+mod note;
 mod params;
 mod rng;
 mod theory;
@@ -99,6 +105,7 @@ impl Plugin for MidiGen {
                 sample_rate: t.sample_rate as f64,
                 host_pos: t.pos_beats(),
                 num_samples,
+                mode: self.params.mode.value(),
                 key: self.params.key.value(),
                 scale: self.params.scale.value(),
                 mood: self.params.mood.value(),
